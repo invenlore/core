@@ -1,4 +1,4 @@
-module github.com/invenlore/api.gateway
+module github.com/invenlore/core
 
 go 1.24.0
 
