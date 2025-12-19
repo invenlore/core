@@ -15,8 +15,11 @@ func LoggerHealthMiddleware() health.Middleware {
 			now := time.Now()
 			result := next(r)
 
-			logrus.Infof("processed health check request in %f seconds (result: %s)",
-				time.Since(now).Seconds(), result.Status)
+			logrus.WithField("scope", "health").Infof(
+				"processed health check request in %f seconds (result: %s)",
+				time.Since(now).Seconds(),
+				result.Status,
+			)
 
 			return result
 		}
@@ -29,8 +32,12 @@ func LoggerHealthInterceptor() health.Interceptor {
 			now := time.Now()
 			result := next(ctx, name, state)
 
-			logrus.Infof("executed health check function of component %s in %f seconds (result: %s)",
-				name, time.Since(now).Seconds(), result.Status)
+			logrus.WithField("scope", "health").Infof(
+				"executed health check function of component %s in %f seconds (result: %s)",
+				name,
+				time.Since(now).Seconds(),
+				result.Status,
+			)
 
 			return result
 		}

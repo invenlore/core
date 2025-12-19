@@ -27,6 +27,8 @@ func (w *wrappedServerStreamLogger) SendMsg(m any) error {
 			"statusCode": statusCode,
 			"error":      err.Error(),
 		}).Errorf("server: failed to send message in gRPC stream")
+	} else {
+		logrus.WithField("requestID", w.reqID).Debug("server: sent message in gRPC stream")
 	}
 
 	return err
@@ -42,6 +44,8 @@ func (w *wrappedServerStreamLogger) RecvMsg(m any) error {
 			"statusCode": statusCode,
 			"error":      err.Error(),
 		}).Errorf("server: failed to receive message in gRPC stream")
+	} else {
+		logrus.WithField("requestID", w.reqID).Debug("server: received message in gRPC stream")
 	}
 
 	return err
@@ -63,21 +67,31 @@ func (w *wrappedServerStreamLogger) Context() context.Context {
 	return w.modifiedCtx
 }
 
-func ServerRequestIDInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+func ServerRequestIDInterceptor(
+	ctx context.Context,
+	req any,
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+) (any, error) {
 	requestID := uuid.NewString()
 	newCtx := context.WithValue(ctx, "requestID", requestID)
 
 	return handler(newCtx, req)
 }
 
-func ServerLoggingInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+func ServerLoggingInterceptor(
+	ctx context.Context,
+	req any,
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+) (any, error) {
 	reqID := ctx.Value("requestID")
 	if reqID == nil {
 		reqID = "no-request-id"
 	}
 
 	startTime := time.Now()
-	logrus.WithField("requestID", reqID).Infof("server: received gRPC request: %s", info.FullMethod)
+	logrus.WithField("requestID", reqID).Debugf("server: received gRPC request: %s", info.FullMethod)
 
 	resp, err := handler(ctx, req)
 
@@ -101,7 +115,12 @@ func ServerLoggingInterceptor(ctx context.Context, req any, info *grpc.UnaryServ
 	return resp, err
 }
 
-func ServerStreamRequestIDInterceptor(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+func ServerStreamRequestIDInterceptor(
+	srv any,
+	ss grpc.ServerStream,
+	info *grpc.StreamServerInfo,
+	handler grpc.StreamHandler,
+) error {
 	ctx := ss.Context()
 	requestID := uuid.NewString()
 	newCtx := context.WithValue(ctx, "requestID", requestID)
@@ -115,7 +134,12 @@ func ServerStreamRequestIDInterceptor(srv any, ss grpc.ServerStream, info *grpc.
 	return handler(srv, wrappedStreamWithNewCtx)
 }
 
-func ServerStreamLoggingInterceptor(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+func ServerStreamLoggingInterceptor(
+	srv any,
+	ss grpc.ServerStream,
+	info *grpc.StreamServerInfo,
+	handler grpc.StreamHandler,
+) error {
 	reqIDStr := "no-request-id"
 
 	if ws, ok := ss.(*wrappedServerStreamLogger); ok {
@@ -128,7 +152,7 @@ func ServerStreamLoggingInterceptor(srv any, ss grpc.ServerStream, info *grpc.St
 	}
 
 	startTime := time.Now()
-	logrus.WithField("requestID", reqIDStr).Infof("server: received gRPC stream: %s", info.FullMethod)
+	logrus.WithField("requestID", reqIDStr).Debugf("server: received gRPC stream: %s", info.FullMethod)
 
 	err := handler(srv, ss)
 

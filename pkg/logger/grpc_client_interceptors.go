@@ -43,6 +43,7 @@ func (w *wrappedClientStreamLogger) SendMsg(m any) error {
 	} else {
 		logrus.WithField("requestID", w.reqID).Debugf("client: sent message in stream %s", w.method)
 	}
+
 	return err
 }
 
@@ -66,10 +67,19 @@ func (w *wrappedClientStreamLogger) RecvMsg(m any) error {
 	} else {
 		logrus.WithField("requestID", w.reqID).Debugf("client: received message in stream %s", w.method)
 	}
+
 	return err
 }
 
-func ClientRequestIDInterceptor(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+func ClientRequestIDInterceptor(
+	ctx context.Context,
+	method string,
+	req,
+	reply any,
+	cc *grpc.ClientConn,
+	invoker grpc.UnaryInvoker,
+	opts ...grpc.CallOption,
+) error {
 	requestID, ok := ctx.Value("requestID").(string)
 	if !ok {
 		requestID = uuid.NewString()
@@ -84,19 +94,35 @@ func ClientRequestIDInterceptor(ctx context.Context, method string, req, reply a
 	md.Append("x-request-id", requestID)
 	newCtx := metadata.NewOutgoingContext(ctx, md)
 
-	logrus.WithField("requestID", requestID).Debugf("client: outgoing request to %s, method: %s", cc.Target(), method)
+	logrus.WithField("requestID", requestID).Debugf(
+		"client: outgoing request to %s, method: %s",
+		cc.Target(),
+		method,
+	)
 
 	return invoker(newCtx, method, req, reply, cc, opts...)
 }
 
-func ClientLoggingInterceptor(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+func ClientLoggingInterceptor(
+	ctx context.Context,
+	method string,
+	req,
+	reply any,
+	cc *grpc.ClientConn,
+	invoker grpc.UnaryInvoker,
+	opts ...grpc.CallOption,
+) error {
 	requestID, ok := ctx.Value("requestID").(string)
 	if !ok {
 		requestID = "no-request-id"
 	}
 
 	startTime := time.Now()
-	logrus.WithField("requestID", requestID).Infof("client: sending gRPC request: %s (target: %s)", method, cc.Target())
+	logrus.WithField("requestID", requestID).Debugf(
+		"client: sending gRPC request: %s (target: %s)",
+		method,
+		cc.Target(),
+	)
 
 	err := invoker(ctx, method, req, reply, cc, opts...)
 
@@ -128,6 +154,10 @@ func ClientStreamInterceptor(ctx context.Context, desc *grpc.StreamDesc, cc *grp
 		ctx = context.WithValue(ctx, "requestID", requestID)
 	}
 
+	logFields := logrus.Fields{
+		"requestID": requestID,
+	}
+
 	md, ok := metadata.FromOutgoingContext(ctx)
 	if !ok {
 		md = metadata.New(nil)
@@ -137,17 +167,17 @@ func ClientStreamInterceptor(ctx context.Context, desc *grpc.StreamDesc, cc *grp
 	newCtx := metadata.NewOutgoingContext(ctx, md)
 
 	startTime := time.Now()
-	logrus.WithField("requestID", requestID).Infof("client: initiating stream: %s (target: %s)", method, cc.Target())
+	logrus.WithFields(logFields).Infof("client: initiating stream: %s (target: %s)", method, cc.Target())
 
 	actualClientStream, err := streamer(newCtx, desc, cc, method, opts...)
 	if err != nil {
-		logrus.WithField("requestID", requestID).Errorf("client: failed to call streamer function: %v", err)
+		logrus.WithFields(logFields).Errorf("client: failed to call streamer function: %v", err)
 
 		return nil, err
 	}
 
 	if actualClientStream == nil {
-		logrus.WithField("requestID", requestID).Errorf("client: streamer function returned nil ClientStream")
+		logrus.WithFields(logFields).Errorf("client: streamer function returned nil ClientStream")
 
 		return nil, err
 	}
