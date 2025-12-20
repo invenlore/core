@@ -81,30 +81,30 @@ type AppConfig struct {
 		OperationTimeout time.Duration `env:"OPERATION_TIMEOUT" envDefault:"10s"`
 	} `envPrefix:"MONGO_"`
 
-	GRPCServices []GRPCService `env:"-"`
+	GRPCServices []*GRPCService `env:"-"`
 }
 
 type ConfigProvider interface {
-	GetGRPCConfig() HTTPServerConfig
-	GetHTTPConfig() HTTPServerConfig
-	GetHealthConfig() HealthServerConfig
-	GetMongoConfig() MongoConfig
-	GetGRPCServices() []GRPCService
+	GetGRPCConfig() *HTTPServerConfig
+	GetHTTPConfig() *HTTPServerConfig
+	GetHealthConfig() *HealthServerConfig
+	GetMongoConfig() *MongoConfig
+	GetGRPCServices() []*GRPCService
 }
 
 type appConfigProvider struct {
 	cfg *AppConfig
 }
 
-func (p *appConfigProvider) GetGRPCConfig() GRPCServerConfig {
-	return GRPCServerConfig{
+func (p *appConfigProvider) GetGRPCConfig() *GRPCServerConfig {
+	return &GRPCServerConfig{
 		Host: p.cfg.GRPC.Host,
 		Port: p.cfg.GRPC.Port,
 	}
 }
 
-func (p *appConfigProvider) GetHTTPConfig() HTTPServerConfig {
-	return HTTPServerConfig{
+func (p *appConfigProvider) GetHTTPConfig() *HTTPServerConfig {
+	return &HTTPServerConfig{
 		Host:              p.cfg.HTTP.Host,
 		Port:              p.cfg.HTTP.Port,
 		ReadTimeout:       p.cfg.HTTP.ReadTimeout,
@@ -114,22 +114,22 @@ func (p *appConfigProvider) GetHTTPConfig() HTTPServerConfig {
 	}
 }
 
-func (p *appConfigProvider) GetHealthConfig() HealthServerConfig {
-	return HealthServerConfig{
+func (p *appConfigProvider) GetHealthConfig() *HealthServerConfig {
+	return &HealthServerConfig{
 		Host: p.cfg.Health.Host,
 		Port: p.cfg.Health.Port,
 	}
 }
 
-func (p *appConfigProvider) GetMongoConfig() MongoConfig {
-	return MongoConfig{
+func (p *appConfigProvider) GetMongoConfig() *MongoConfig {
+	return &MongoConfig{
 		URI:              p.cfg.Mongo.URI,
 		DatabaseName:     p.cfg.Mongo.DatabaseName,
 		OperationTimeout: p.cfg.Mongo.OperationTimeout,
 	}
 }
 
-func (p *appConfigProvider) GetGRPCServices() []GRPCService {
+func (p *appConfigProvider) GetGRPCServices() []*GRPCService {
 	return p.cfg.GRPCServices
 }
 
@@ -146,7 +146,7 @@ var grpcServiceRegistry = map[string]struct {
 func LoadConfig() (*AppConfig, error) {
 	var (
 		cfg            AppConfig
-		loadedServices []GRPCService
+		loadedServices []*GRPCService
 		loggerEntry    *logrus.Entry = logrus.WithField("scope", "config")
 	)
 
@@ -171,7 +171,7 @@ func LoadConfig() (*AppConfig, error) {
 
 		loggerEntry.Infof("found gRPC service '%s' at address: %s", servicePrefix, address)
 
-		loadedServices = append(loadedServices, GRPCService{
+		loadedServices = append(loadedServices, &GRPCService{
 			Name:     servicePrefix,
 			Address:  address,
 			Register: registrationInfo.Register,
