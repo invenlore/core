@@ -52,7 +52,7 @@ type MongoConfig struct {
 	OperationTimeout time.Duration
 }
 
-type appConfig struct {
+type AppConfig struct {
 	AppEnv               AppEnv          `env:"APP_ENV" envDefault:"dev"`
 	LogLevel             logger.LogLevel `env:"APP_LOG_LEVEL" envDefault:"INFO"`
 	ServiceHealthTimeout time.Duration   `env:"SERVICE_HEALTH_TIMEOUT" envDefault:"60s"`
@@ -85,8 +85,8 @@ type appConfig struct {
 	GRPCServices []*GRPCService `env:"-"`
 }
 
-type AppConfig interface {
-	GetConfig() *appConfig
+type AppConfigProvider interface {
+	GetConfig() *AppConfig
 	GetGRPCConfig() *GRPCServerConfig
 	GetHTTPConfig() *HTTPServerConfig
 	GetHealthConfig() *HealthServerConfig
@@ -94,18 +94,18 @@ type AppConfig interface {
 	GetGRPCServices() []*GRPCService
 }
 
-func (p *appConfig) GetConfig() *appConfig {
+func (p *AppConfig) GetConfig() *AppConfig {
 	return p
 }
 
-func (p *appConfig) GetGRPCConfig() *GRPCServerConfig {
+func (p *AppConfig) GetGRPCConfig() *GRPCServerConfig {
 	return &GRPCServerConfig{
 		Host: p.GRPC.Host,
 		Port: p.GRPC.Port,
 	}
 }
 
-func (p *appConfig) GetHTTPConfig() *HTTPServerConfig {
+func (p *AppConfig) GetHTTPConfig() *HTTPServerConfig {
 	return &HTTPServerConfig{
 		Host:              p.HTTP.Host,
 		Port:              p.HTTP.Port,
@@ -116,14 +116,14 @@ func (p *appConfig) GetHTTPConfig() *HTTPServerConfig {
 	}
 }
 
-func (p *appConfig) GetHealthConfig() *HealthServerConfig {
+func (p *AppConfig) GetHealthConfig() *HealthServerConfig {
 	return &HealthServerConfig{
 		Host: p.Health.Host,
 		Port: p.Health.Port,
 	}
 }
 
-func (p *appConfig) GetMongoConfig() *MongoConfig {
+func (p *AppConfig) GetMongoConfig() *MongoConfig {
 	return &MongoConfig{
 		URI:              p.Mongo.URI,
 		DatabaseName:     p.Mongo.DatabaseName,
@@ -131,14 +131,14 @@ func (p *appConfig) GetMongoConfig() *MongoConfig {
 	}
 }
 
-func (p *appConfig) GetGRPCServices() []*GRPCService {
+func (p *AppConfig) GetGRPCServices() []*GRPCService {
 	return p.GRPCServices
 }
 
 var (
 	once                sync.Once
 	configLoadingErr    error
-	instance            *appConfig
+	instance            *AppConfig
 	grpcServiceRegistry = map[string]struct {
 		AddressEnv string
 		Register   RegisterFunc
@@ -150,9 +150,9 @@ var (
 	}
 )
 
-func LoadConfig() (*appConfig, error) {
+func LoadConfig() (*AppConfig, error) {
 	var (
-		cfg            appConfig
+		cfg            AppConfig
 		loadedServices []*GRPCService
 		loggerEntry    *logrus.Entry = logrus.WithField("scope", "config")
 	)
@@ -207,7 +207,7 @@ func LoadConfig() (*appConfig, error) {
 	return &cfg, nil
 }
 
-func GetConfig() (AppConfig, error) {
+func GetConfig() (AppConfigProvider, error) {
 	once.Do(func() {
 		instance, configLoadingErr = LoadConfig()
 		if configLoadingErr != nil {
