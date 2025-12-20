@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/caarlos0/env/v11"
@@ -51,7 +52,7 @@ type MongoConfig struct {
 	OperationTimeout time.Duration
 }
 
-type AppConfig struct {
+type appConfig struct {
 	AppEnv               AppEnv          `env:"APP_ENV" envDefault:"dev"`
 	LogLevel             logger.LogLevel `env:"APP_LOG_LEVEL" envDefault:"INFO"`
 	ServiceHealthTimeout time.Duration   `env:"SERVICE_HEALTH_TIMEOUT" envDefault:"60s"`
@@ -84,68 +85,69 @@ type AppConfig struct {
 	GRPCServices []*GRPCService `env:"-"`
 }
 
-type ConfigProvider interface {
-	GetGRPCConfig() *HTTPServerConfig
+type AppConfig interface {
+	GetGRPCConfig() *GRPCServerConfig
 	GetHTTPConfig() *HTTPServerConfig
 	GetHealthConfig() *HealthServerConfig
 	GetMongoConfig() *MongoConfig
 	GetGRPCServices() []*GRPCService
 }
 
-type appConfigProvider struct {
-	cfg *AppConfig
-}
-
-func (p *appConfigProvider) GetGRPCConfig() *GRPCServerConfig {
+func (p *appConfig) GetGRPCConfig() *GRPCServerConfig {
 	return &GRPCServerConfig{
-		Host: p.cfg.GRPC.Host,
-		Port: p.cfg.GRPC.Port,
+		Host: p.GRPC.Host,
+		Port: p.GRPC.Port,
 	}
 }
 
-func (p *appConfigProvider) GetHTTPConfig() *HTTPServerConfig {
+func (p *appConfig) GetHTTPConfig() *HTTPServerConfig {
 	return &HTTPServerConfig{
-		Host:              p.cfg.HTTP.Host,
-		Port:              p.cfg.HTTP.Port,
-		ReadTimeout:       p.cfg.HTTP.ReadTimeout,
-		WriteTimeout:      p.cfg.HTTP.WriteTimeout,
-		IdleTimeout:       p.cfg.HTTP.IdleTimeout,
-		ReadHeaderTimeout: p.cfg.HTTP.ReadHeaderTimeout,
+		Host:              p.HTTP.Host,
+		Port:              p.HTTP.Port,
+		ReadTimeout:       p.HTTP.ReadTimeout,
+		WriteTimeout:      p.HTTP.WriteTimeout,
+		IdleTimeout:       p.HTTP.IdleTimeout,
+		ReadHeaderTimeout: p.HTTP.ReadHeaderTimeout,
 	}
 }
 
-func (p *appConfigProvider) GetHealthConfig() *HealthServerConfig {
+func (p *appConfig) GetHealthConfig() *HealthServerConfig {
 	return &HealthServerConfig{
-		Host: p.cfg.Health.Host,
-		Port: p.cfg.Health.Port,
+		Host: p.Health.Host,
+		Port: p.Health.Port,
 	}
 }
 
-func (p *appConfigProvider) GetMongoConfig() *MongoConfig {
+func (p *appConfig) GetMongoConfig() *MongoConfig {
 	return &MongoConfig{
-		URI:              p.cfg.Mongo.URI,
-		DatabaseName:     p.cfg.Mongo.DatabaseName,
-		OperationTimeout: p.cfg.Mongo.OperationTimeout,
+		URI:              p.Mongo.URI,
+		DatabaseName:     p.Mongo.DatabaseName,
+		OperationTimeout: p.Mongo.OperationTimeout,
 	}
 }
 
-func (p *appConfigProvider) GetGRPCServices() []*GRPCService {
-	return p.cfg.GRPCServices
+func (p *appConfig) GetGRPCServices() []*GRPCService {
+	return p.GRPCServices
 }
 
-var grpcServiceRegistry = map[string]struct {
-	AddressEnv string
-	Register   RegisterFunc
-}{
-	"UserService": {
-		AddressEnv: "USER_SERVICE_ENDPOINT",
-		Register:   user.RegisterUserServiceHandler,
-	},
-}
+var (
+	once                sync.Once
+	configLoadingErr    error
+	instance            *appConfig
+	grpcServiceRegistry = map[string]struct {
+		AddressEnv string
+		Register   RegisterFunc
+	}{
+		"UserService": {
+			AddressEnv: "USER_SERVICE_ENDPOINT",
+			Register:   user.RegisterUserServiceHandler,
+		},
+	}
+)
 
-func LoadConfig() (*AppConfig, error) {
+func LoadConfig() (*appConfig, error) {
 	var (
-		cfg            AppConfig
+		cfg            appConfig
 		loadedServices []*GRPCService
 		loggerEntry    *logrus.Entry = logrus.WithField("scope", "config")
 	)
@@ -198,4 +200,15 @@ func LoadConfig() (*AppConfig, error) {
 	}
 
 	return &cfg, nil
+}
+
+func GetConfig() (AppConfig, error) {
+	once.Do(func() {
+		instance, configLoadingErr = LoadConfig()
+		if configLoadingErr != nil {
+			logrus.Errorf("config loading failed: %v", configLoadingErr)
+		}
+	})
+
+	return instance, configLoadingErr
 }
