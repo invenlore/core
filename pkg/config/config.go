@@ -46,27 +46,27 @@ type HealthServerConfig struct {
 }
 
 type AppConfig struct {
-	AppEnv               string          `env:"APP_ENV" envDefault:"dev"`
+	AppEnv               AppEnv          `env:"APP_ENV" envDefault:"dev"`
 	LogLevel             logger.LogLevel `env:"APP_LOG_LEVEL" envDefault:"INFO"`
 	ServiceHealthTimeout time.Duration   `env:"SERVICE_HEALTH_TIMEOUT" envDefault:"60s"`
 
 	GRPC struct {
-		Host string `env:"GRPC_HOST" envDefault:"0.0.0.0"`
-		Port string `env:"GRPC_PORT" envDefault:"8080"`
+		Host string `env:"HOST" envDefault:"0.0.0.0"`
+		Port string `env:"PORT" envDefault:"8080"`
 	} `envPrefix:"GRPC_"`
 
 	HTTP struct {
-		Host              string        `env:"HTTP_HOST" envDefault:"0.0.0.0"`
-		Port              string        `env:"HTTP_PORT" envDefault:"8080"`
-		ReadTimeout       time.Duration `env:"HTTP_READ_TIMEOUT" envDefault:"10s"`
-		WriteTimeout      time.Duration `env:"HTTP_WRITE_TIMEOUT" envDefault:"10s"`
-		IdleTimeout       time.Duration `env:"HTTP_IDLE_TIMEOUT" envDefault:"60s"`
-		ReadHeaderTimeout time.Duration `env:"HTTP_READ_HEADER_TIMEOUT" envDefault:"5s"`
+		Host              string        `env:"HOST" envDefault:"0.0.0.0"`
+		Port              string        `env:"PORT" envDefault:"8080"`
+		ReadTimeout       time.Duration `env:"READ_TIMEOUT" envDefault:"10s"`
+		WriteTimeout      time.Duration `env:"WRITE_TIMEOUT" envDefault:"10s"`
+		IdleTimeout       time.Duration `env:"IDLE_TIMEOUT" envDefault:"60s"`
+		ReadHeaderTimeout time.Duration `env:"READ_HEADER_TIMEOUT" envDefault:"5s"`
 	} `envPrefix:"HTTP_"`
 
 	Health struct {
-		Host string `env:"HEALTH_HOST" envDefault:"0.0.0.0"`
-		Port string `env:"HEALTH_PORT" envDefault:"80"`
+		Host string `env:"HOST" envDefault:"0.0.0.0"`
+		Port string `env:"PORT" envDefault:"80"`
 	} `envPrefix:"HEALTH_"`
 
 	GRPCServices []GRPCService `env:"-"`
