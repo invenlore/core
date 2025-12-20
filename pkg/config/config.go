@@ -45,6 +45,12 @@ type HealthServerConfig struct {
 	Port string
 }
 
+type MongoConfig struct {
+	URI              string
+	DatabaseName     string
+	OperationTimeout time.Duration
+}
+
 type AppConfig struct {
 	AppEnv               AppEnv          `env:"APP_ENV" envDefault:"dev"`
 	LogLevel             logger.LogLevel `env:"APP_LOG_LEVEL" envDefault:"INFO"`
@@ -69,6 +75,12 @@ type AppConfig struct {
 		Port string `env:"PORT" envDefault:"80"`
 	} `envPrefix:"HEALTH_"`
 
+	Mongo struct {
+		URI              string        `env:"URI,notEmpty"`
+		DatabaseName     string        `env:"DATABASE_NAME,notEmpty"`
+		OperationTimeout time.Duration `env:"OPERATION_TIMEOUT" envDefault:"10s"`
+	} `envPrefix:"MONGO_"`
+
 	GRPCServices []GRPCService `env:"-"`
 }
 
@@ -76,6 +88,7 @@ type ConfigProvider interface {
 	GetGRPCConfig() HTTPServerConfig
 	GetHTTPConfig() HTTPServerConfig
 	GetHealthConfig() HealthServerConfig
+	GetMongoConfig() MongoConfig
 	GetGRPCServices() []GRPCService
 }
 
@@ -105,6 +118,14 @@ func (p *appConfigProvider) GetHealthConfig() HealthServerConfig {
 	return HealthServerConfig{
 		Host: p.cfg.Health.Host,
 		Port: p.cfg.Health.Port,
+	}
+}
+
+func (p *appConfigProvider) GetMongoConfig() MongoConfig {
+	return MongoConfig{
+		URI:              p.cfg.Mongo.URI,
+		DatabaseName:     p.cfg.Mongo.DatabaseName,
+		OperationTimeout: p.cfg.Mongo.OperationTimeout,
 	}
 }
 
@@ -170,6 +191,7 @@ func LoadConfig() (*AppConfig, error) {
 	loggerEntry.Debugf("GRPC Host: %s, Port: %s", cfg.GRPC.Host, cfg.GRPC.Port)
 	loggerEntry.Debugf("HTTP Host: %s, Port: %s", cfg.HTTP.Host, cfg.HTTP.Port)
 	loggerEntry.Debugf("Health Host: %s, Port: %s", cfg.Health.Host, cfg.Health.Port)
+	loggerEntry.Debugf("MongoDB database: '%s'", cfg.Mongo.DatabaseName)
 
 	for _, svc := range cfg.GRPCServices {
 		loggerEntry.Debugf("gRPC service: Name='%s', Address='%s'", svc.Name, svc.Address)
