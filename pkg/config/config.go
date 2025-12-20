@@ -9,6 +9,7 @@ import (
 
 	"github.com/caarlos0/env/v11"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/invenlore/core/pkg/logger"
 	"github.com/invenlore/proto/pkg/user"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -46,8 +47,8 @@ type HealthServerConfig struct {
 }
 
 type AppConfig struct {
-	AppEnv   string `env:"APP_ENV" envDefault:"dev"`
-	LogLevel string `env:"APP_LOG_LEVEL" envDefault:"INFO"`
+	AppEnv   string          `env:"APP_ENV" envDefault:"dev"`
+	LogLevel logger.LogLevel `env:"APP_LOG_LEVEL" envDefault:"INFO"`
 
 	GRPC struct {
 		Host              string        `env:"GRPC_HOST" envDefault:"0.0.0.0"`
@@ -138,18 +139,20 @@ func LoadConfig() (*AppConfig, error) {
 	var (
 		cfg            AppConfig
 		loadedServices []GRPCService
-		logger         *logrus.Entry = logrus.WithField("scope", "config")
+		loggerEntry    *logrus.Entry = logrus.WithField("scope", "config")
 	)
 
 	if err := env.Parse(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse server config: %w", err)
 	}
 
+	logrus.SetLevel(cfg.LogLevel.ToLogrusLevel())
+
 	for servicePrefix, registrationInfo := range grpcServiceRegistry {
 		address := os.Getenv(registrationInfo.AddressEnv)
 
 		if address == "" {
-			logger.Debugf("gRPC service address not configured for '%s' (env var: %s), skipping...", servicePrefix, registrationInfo.AddressEnv)
+			loggerEntry.Debugf("gRPC service address not configured for '%s' (env var: %s), skipping...", servicePrefix, registrationInfo.AddressEnv)
 
 			continue
 		}
@@ -158,7 +161,7 @@ func LoadConfig() (*AppConfig, error) {
 			return nil, fmt.Errorf("internal config error: register function is nil for service '%s'", servicePrefix)
 		}
 
-		logger.Infof("found gRPC service '%s' at address: %s", servicePrefix, address)
+		loggerEntry.Infof("found gRPC service '%s' at address: %s", servicePrefix, address)
 
 		loadedServices = append(loadedServices, GRPCService{
 			Name:     servicePrefix,
@@ -168,21 +171,21 @@ func LoadConfig() (*AppConfig, error) {
 	}
 
 	if len(loadedServices) == 0 {
-		logger.Warn("no gRPC services were configured or found")
+		loggerEntry.Warn("no gRPC services were configured or found")
 	}
 
 	cfg.GRPCServices = loadedServices
 
-	logger.Info("configuration loaded successfully")
+	loggerEntry.Info("configuration loaded successfully")
 
-	logger.Debugf("AppEnv: '%s'", cfg.AppEnv)
-	logger.Debugf("LogLevel: '%s'", cfg.LogLevel)
-	logger.Debugf("GRPC Host: %s, Port: %s", cfg.GRPC.Host, cfg.GRPC.Port)
-	logger.Debugf("HTTP Host: %s, Port: %s", cfg.HTTP.Host, cfg.HTTP.Port)
-	logger.Debugf("Health Host: %s, Port: %s", cfg.Health.Host, cfg.Health.Port)
+	loggerEntry.Debugf("AppEnv: '%s'", cfg.AppEnv)
+	loggerEntry.Debugf("LogLevel: '%s'", cfg.LogLevel)
+	loggerEntry.Debugf("GRPC Host: %s, Port: %s", cfg.GRPC.Host, cfg.GRPC.Port)
+	loggerEntry.Debugf("HTTP Host: %s, Port: %s", cfg.HTTP.Host, cfg.HTTP.Port)
+	loggerEntry.Debugf("Health Host: %s, Port: %s", cfg.Health.Host, cfg.Health.Port)
 
 	for _, svc := range cfg.GRPCServices {
-		logger.Debugf("gRPC service: Name='%s', Address='%s'", svc.Name, svc.Address)
+		loggerEntry.Debugf("gRPC service: Name='%s', Address='%s'", svc.Name, svc.Address)
 	}
 
 	return &cfg, nil
