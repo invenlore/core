@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/caarlos0/env/v11"
@@ -113,20 +112,15 @@ func (p *appConfigProvider) GetGRPCServices() []GRPCService {
 	return p.cfg.GRPCServices
 }
 
-var (
-	singletonConfigProvider ConfigProvider = nil
-	onceProvider            sync.Once
-
-	grpcServiceRegistry = map[string]struct {
-		AddressEnv string
-		Register   RegisterFunc
-	}{
-		"UserService": {
-			AddressEnv: "USER_SERVICE_ENDPOINT",
-			Register:   user.RegisterUserServiceHandler,
-		},
-	}
-)
+var grpcServiceRegistry = map[string]struct {
+	AddressEnv string
+	Register   RegisterFunc
+}{
+	"UserService": {
+		AddressEnv: "USER_SERVICE_ENDPOINT",
+		Register:   user.RegisterUserServiceHandler,
+	},
+}
 
 func LoadConfig() (*AppConfig, error) {
 	var (
