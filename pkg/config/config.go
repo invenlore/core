@@ -86,11 +86,16 @@ type appConfig struct {
 }
 
 type AppConfig interface {
+	GetConfig() *appConfig
 	GetGRPCConfig() *GRPCServerConfig
 	GetHTTPConfig() *HTTPServerConfig
 	GetHealthConfig() *HealthServerConfig
 	GetMongoConfig() *MongoConfig
 	GetGRPCServices() []*GRPCService
+}
+
+func (p *appConfig) GetConfig() *appConfig {
+	return p
 }
 
 func (p *appConfig) GetGRPCConfig() *GRPCServerConfig {
