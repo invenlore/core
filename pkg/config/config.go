@@ -47,16 +47,13 @@ type HealthServerConfig struct {
 }
 
 type AppConfig struct {
-	AppEnv   string          `env:"APP_ENV" envDefault:"dev"`
-	LogLevel logger.LogLevel `env:"APP_LOG_LEVEL" envDefault:"INFO"`
+	AppEnv               string          `env:"APP_ENV" envDefault:"dev"`
+	LogLevel             logger.LogLevel `env:"APP_LOG_LEVEL" envDefault:"INFO"`
+	ServiceHealthTimeout time.Duration   `env:"SERVICE_HEALTH_TIMEOUT" envDefault:"60s"`
 
 	GRPC struct {
-		Host              string        `env:"GRPC_HOST" envDefault:"0.0.0.0"`
-		Port              string        `env:"GRPC_PORT" envDefault:"8080"`
-		ReadTimeout       time.Duration `env:"GRPC_READ_TIMEOUT" envDefault:"10s"`
-		WriteTimeout      time.Duration `env:"GRPC_WRITE_TIMEOUT" envDefault:"10s"`
-		IdleTimeout       time.Duration `env:"GRPC_IDLE_TIMEOUT" envDefault:"60s"`
-		ReadHeaderTimeout time.Duration `env:"GRPC_READ_HEADER_TIMEOUT" envDefault:"5s"`
+		Host string `env:"GRPC_HOST" envDefault:"0.0.0.0"`
+		Port string `env:"GRPC_PORT" envDefault:"8080"`
 	} `envPrefix:"GRPC_"`
 
 	HTTP struct {
@@ -89,12 +86,8 @@ type appConfigProvider struct {
 
 func (p *appConfigProvider) GetGRPCConfig() GRPCServerConfig {
 	return GRPCServerConfig{
-		Host:              p.cfg.GRPC.Host,
-		Port:              p.cfg.GRPC.Port,
-		ReadTimeout:       p.cfg.GRPC.ReadTimeout,
-		WriteTimeout:      p.cfg.GRPC.WriteTimeout,
-		IdleTimeout:       p.cfg.GRPC.IdleTimeout,
-		ReadHeaderTimeout: p.cfg.GRPC.ReadHeaderTimeout,
+		Host: p.cfg.GRPC.Host,
+		Port: p.cfg.GRPC.Port,
 	}
 }
 
