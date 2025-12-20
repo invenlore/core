@@ -24,32 +24,28 @@ type GRPCService struct {
 }
 
 type GRPCServerConfig struct {
-	Host              string
-	Port              string
-	ReadTimeout       time.Duration
-	WriteTimeout      time.Duration
-	IdleTimeout       time.Duration
-	ReadHeaderTimeout time.Duration
+	Host string `env:"HOST" envDefault:"0.0.0.0"`
+	Port string `env:"PORT" envDefault:"8080"`
 }
 
 type HTTPServerConfig struct {
-	Host              string
-	Port              string
-	ReadTimeout       time.Duration
-	WriteTimeout      time.Duration
-	IdleTimeout       time.Duration
-	ReadHeaderTimeout time.Duration
+	Host              string        `env:"HOST" envDefault:"0.0.0.0"`
+	Port              string        `env:"PORT" envDefault:"8080"`
+	ReadTimeout       time.Duration `env:"READ_TIMEOUT" envDefault:"10s"`
+	WriteTimeout      time.Duration `env:"WRITE_TIMEOUT" envDefault:"10s"`
+	IdleTimeout       time.Duration `env:"IDLE_TIMEOUT" envDefault:"60s"`
+	ReadHeaderTimeout time.Duration `env:"READ_HEADER_TIMEOUT" envDefault:"5s"`
 }
 
 type HealthServerConfig struct {
-	Host string
-	Port string
+	Host string `env:"HOST" envDefault:"0.0.0.0"`
+	Port string `env:"PORT" envDefault:"80"`
 }
 
 type MongoConfig struct {
-	URI              string
-	DatabaseName     string
-	OperationTimeout time.Duration
+	URI              string        `env:"URI"`
+	DatabaseName     string        `env:"DATABASE_NAME"`
+	OperationTimeout time.Duration `env:"OPERATION_TIMEOUT" envDefault:"10s"`
 }
 
 type AppConfig struct {
@@ -57,30 +53,10 @@ type AppConfig struct {
 	LogLevel             logger.LogLevel `env:"APP_LOG_LEVEL" envDefault:"INFO"`
 	ServiceHealthTimeout time.Duration   `env:"SERVICE_HEALTH_TIMEOUT" envDefault:"60s"`
 
-	GRPC struct {
-		Host string `env:"HOST" envDefault:"0.0.0.0"`
-		Port string `env:"PORT" envDefault:"8080"`
-	} `envPrefix:"GRPC_"`
-
-	HTTP struct {
-		Host              string        `env:"HOST" envDefault:"0.0.0.0"`
-		Port              string        `env:"PORT" envDefault:"8080"`
-		ReadTimeout       time.Duration `env:"READ_TIMEOUT" envDefault:"10s"`
-		WriteTimeout      time.Duration `env:"WRITE_TIMEOUT" envDefault:"10s"`
-		IdleTimeout       time.Duration `env:"IDLE_TIMEOUT" envDefault:"60s"`
-		ReadHeaderTimeout time.Duration `env:"READ_HEADER_TIMEOUT" envDefault:"5s"`
-	} `envPrefix:"HTTP_"`
-
-	Health struct {
-		Host string `env:"HOST" envDefault:"0.0.0.0"`
-		Port string `env:"PORT" envDefault:"80"`
-	} `envPrefix:"HEALTH_"`
-
-	Mongo struct {
-		URI              string        `env:"URI,notEmpty"`
-		DatabaseName     string        `env:"DATABASE_NAME,notEmpty"`
-		OperationTimeout time.Duration `env:"OPERATION_TIMEOUT" envDefault:"10s"`
-	} `envPrefix:"MONGO_"`
+	GRPC   GRPCServerConfig   `envPrefix:"GRPC_"`
+	HTTP   HTTPServerConfig   `envPrefix:"HTTP_"`
+	Health HealthServerConfig `envPrefix:"HEALTH_"`
+	Mongo  MongoConfig        `envPrefix:"MONGO_"`
 
 	GRPCServices []*GRPCService `env:"-"`
 }
@@ -207,7 +183,7 @@ func LoadConfig() (*AppConfig, error) {
 	return &cfg, nil
 }
 
-func GetConfig() (AppConfigProvider, error) {
+func Config() (AppConfigProvider, error) {
 	once.Do(func() {
 		instance, configLoadingErr = LoadConfig()
 		if configLoadingErr != nil {
