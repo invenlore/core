@@ -33,6 +33,7 @@ func (w *wrappedClientStreamLogger) SendMsg(m any) error {
 		statusCode := status.Code(err)
 
 		logrus.WithFields(logrus.Fields{
+			"scope":      "gRPC",
 			"requestID":  w.reqID,
 			"took":       duration,
 			"method":     w.method,
@@ -41,7 +42,10 @@ func (w *wrappedClientStreamLogger) SendMsg(m any) error {
 			"error":      err.Error(),
 		}).Errorf("client: failed to send message in stream")
 	} else {
-		logrus.WithField("requestID", w.reqID).Debugf("client: sent message in stream %s", w.method)
+		logrus.WithFields(logrus.Fields{
+			"scope":     "gRPC",
+			"requestID": w.reqID,
+		}).Tracef("client: sent message in stream %s", w.method)
 	}
 
 	return err
@@ -56,6 +60,7 @@ func (w *wrappedClientStreamLogger) RecvMsg(m any) error {
 			statusCode := status.Code(err)
 
 			logrus.WithFields(logrus.Fields{
+				"scope":      "gRPC",
 				"requestID":  w.reqID,
 				"took":       duration,
 				"method":     w.method,
@@ -65,7 +70,10 @@ func (w *wrappedClientStreamLogger) RecvMsg(m any) error {
 			}).Errorf("client: failed to receive message in stream")
 		}
 	} else {
-		logrus.WithField("requestID", w.reqID).Debugf("client: received message in stream %s", w.method)
+		logrus.WithFields(logrus.Fields{
+			"scope":     "gRPC",
+			"requestID": w.reqID,
+		}).Tracef("client: received message in stream %s", w.method)
 	}
 
 	return err
@@ -94,7 +102,10 @@ func ClientRequestIDInterceptor(
 	md.Append("x-request-id", requestID)
 	newCtx := metadata.NewOutgoingContext(ctx, md)
 
-	logrus.WithField("requestID", requestID).Debugf(
+	logrus.WithFields(logrus.Fields{
+		"scope":     "gRPC",
+		"requestID": requestID,
+	}).Tracef(
 		"client: outgoing request to %s, method: %s",
 		cc.Target(),
 		method,
@@ -118,7 +129,11 @@ func ClientLoggingInterceptor(
 	}
 
 	startTime := time.Now()
-	logrus.WithField("requestID", requestID).Debugf(
+
+	logrus.WithFields(logrus.Fields{
+		"scope":     "gRPC",
+		"requestID": requestID,
+	}).Tracef(
 		"client: sending gRPC request: %s (target: %s)",
 		method,
 		cc.Target(),
@@ -130,6 +145,7 @@ func ClientLoggingInterceptor(
 	statusCode := status.Code(err)
 
 	logFields := logrus.Fields{
+		"scope":      "gRPC",
 		"requestID":  requestID,
 		"took":       duration,
 		"method":     method,
@@ -141,7 +157,7 @@ func ClientLoggingInterceptor(
 		logFields["error"] = err.Error()
 		logrus.WithFields(logFields).Errorf("client: gRPC request failed")
 	} else {
-		logrus.WithFields(logFields).Debugf("client: gRPC request completed successfully")
+		logrus.WithFields(logFields).Tracef("client: gRPC request completed successfully")
 	}
 
 	return err
@@ -155,6 +171,7 @@ func ClientStreamInterceptor(ctx context.Context, desc *grpc.StreamDesc, cc *grp
 	}
 
 	logFields := logrus.Fields{
+		"scope":     "gRPC",
 		"requestID": requestID,
 	}
 
@@ -167,7 +184,7 @@ func ClientStreamInterceptor(ctx context.Context, desc *grpc.StreamDesc, cc *grp
 	newCtx := metadata.NewOutgoingContext(ctx, md)
 
 	startTime := time.Now()
-	logrus.WithFields(logFields).Debugf("client: initiating stream: %s (target: %s)", method, cc.Target())
+	logrus.WithFields(logFields).Tracef("client: initiating stream: %s (target: %s)", method, cc.Target())
 
 	actualClientStream, err := streamer(newCtx, desc, cc, method, opts...)
 	if err != nil {

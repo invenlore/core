@@ -115,6 +115,7 @@ var (
 	once                sync.Once
 	configLoadingErr    error
 	instance            *AppConfig
+	loggerEntry         = logrus.WithField("scope", "config")
 	grpcServiceRegistry = map[string]struct {
 		AddressEnv string
 		Register   RegisterFunc
@@ -130,7 +131,6 @@ func LoadConfig() (*AppConfig, error) {
 	var (
 		cfg            AppConfig
 		loadedServices []*GRPCService
-		loggerEntry    *logrus.Entry = logrus.WithField("scope", "config")
 	)
 
 	if err := env.Parse(&cfg); err != nil {
@@ -187,7 +187,7 @@ func Config() (AppConfigProvider, error) {
 	once.Do(func() {
 		instance, configLoadingErr = LoadConfig()
 		if configLoadingErr != nil {
-			logrus.Errorf("config loading failed: %v", configLoadingErr)
+			loggerEntry.Errorf("config loading failed: %v", configLoadingErr)
 		}
 	})
 

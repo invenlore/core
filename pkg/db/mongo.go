@@ -7,6 +7,7 @@ import (
 	"github.com/invenlore/core/pkg/config"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 func MongoDBConnect(ctx context.Context, mongoCfg *config.MongoConfig) (*mongo.Client, error) {
@@ -20,7 +21,7 @@ func MongoDBConnect(ctx context.Context, mongoCfg *config.MongoConfig) (*mongo.C
 	pingCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
-	if err := client.Ping(pingCtx, nil); err != nil {
+	if err := client.Ping(pingCtx, readpref.Primary()); err != nil {
 		_ = client.Disconnect(context.Background())
 
 		return nil, err
