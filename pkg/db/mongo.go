@@ -2,27 +2,29 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/invenlore/core/pkg/config"
-	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func MongoDBConnect(cfg *config.MongoConfig) *mongo.Client {
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.OperationTimeout)
+func MongoDBConnect(ctx context.Context, mongoCfg *config.MongoConfig) (*mongo.Client, error) {
+	uri := mongoCfg.URI
+
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
+	if err != nil {
+		return nil, err
+	}
+
+	pingCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(cfg.URI))
-	if err != nil {
-		logrus.Fatalf("couldn't connect to MongoDB: %v", err)
+	if err := client.Ping(pingCtx, nil); err != nil {
+		_ = client.Disconnect(context.Background())
+
+		return nil, err
 	}
 
-	if err := client.Ping(ctx, nil); err != nil {
-		logrus.Fatalf("MongoDB isn't available: %v", err)
-	}
-
-	logrus.Debug("MongoDB connected successfully")
-
-	return client
+	return client, nil
 }

@@ -141,7 +141,7 @@ func ClientLoggingInterceptor(
 		logFields["error"] = err.Error()
 		logrus.WithFields(logFields).Errorf("client: gRPC request failed")
 	} else {
-		logrus.WithFields(logFields).Infof("client: gRPC request completed successfully")
+		logrus.WithFields(logFields).Debugf("client: gRPC request completed successfully")
 	}
 
 	return err
@@ -167,7 +167,7 @@ func ClientStreamInterceptor(ctx context.Context, desc *grpc.StreamDesc, cc *grp
 	newCtx := metadata.NewOutgoingContext(ctx, md)
 
 	startTime := time.Now()
-	logrus.WithFields(logFields).Infof("client: initiating stream: %s (target: %s)", method, cc.Target())
+	logrus.WithFields(logFields).Debugf("client: initiating stream: %s (target: %s)", method, cc.Target())
 
 	actualClientStream, err := streamer(newCtx, desc, cc, method, opts...)
 	if err != nil {

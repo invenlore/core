@@ -109,7 +109,7 @@ func ServerLoggingInterceptor(
 		logFields["error"] = err.Error()
 		logrus.WithFields(logFields).Errorf("server: gRPC request failed")
 	} else {
-		logrus.WithFields(logFields).Infof("server: gRPC request completed successfully")
+		logrus.WithFields(logFields).Debugf("server: gRPC request completed successfully")
 	}
 
 	return resp, err
@@ -170,7 +170,7 @@ func ServerStreamLoggingInterceptor(
 		logFields["error"] = err.Error()
 		logrus.WithFields(logFields).Errorf("server: gRPC stream failed")
 	} else {
-		logrus.WithFields(logFields).Infof("server: gRPC stream completed successfully")
+		logrus.WithFields(logFields).Debugf("server: gRPC stream completed successfully")
 	}
 
 	return err
