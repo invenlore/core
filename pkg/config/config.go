@@ -38,14 +38,20 @@ type HTTPServerConfig struct {
 }
 
 type HealthServerConfig struct {
-	Host string `env:"HOST" envDefault:"0.0.0.0"`
-	Port string `env:"PORT" envDefault:"80"`
+	Host              string        `env:"HOST" envDefault:"0.0.0.0"`
+	Port              string        `env:"PORT" envDefault:"80"`
+	ReadTimeout       time.Duration `env:"READ_TIMEOUT" envDefault:"10s"`
+	WriteTimeout      time.Duration `env:"WRITE_TIMEOUT" envDefault:"10s"`
+	IdleTimeout       time.Duration `env:"IDLE_TIMEOUT" envDefault:"60s"`
+	ReadHeaderTimeout time.Duration `env:"READ_HEADER_TIMEOUT" envDefault:"5s"`
 }
 
 type MongoConfig struct {
-	URI              string        `env:"URI"`
-	DatabaseName     string        `env:"DATABASE_NAME"`
-	OperationTimeout time.Duration `env:"OPERATION_TIMEOUT" envDefault:"10s"`
+	URI                 string        `env:"URI"`
+	DatabaseName        string        `env:"DATABASE_NAME"`
+	HealthCheckTimeout  time.Duration `env:"HEALTHCHECK_TIMEOUT" envDefault:"2s"`
+	HealthCheckInterval time.Duration `env:"HEALTHCHECK_INTERVAL" envDefault:"10s"`
+	OperationTimeout    time.Duration `env:"OPERATION_TIMEOUT" envDefault:"10s"`
 }
 
 type AppConfig struct {
@@ -75,36 +81,19 @@ func (p *AppConfig) GetConfig() *AppConfig {
 }
 
 func (p *AppConfig) GetGRPCConfig() *GRPCServerConfig {
-	return &GRPCServerConfig{
-		Host: p.GRPC.Host,
-		Port: p.GRPC.Port,
-	}
+	return &p.GRPC
 }
 
 func (p *AppConfig) GetHTTPConfig() *HTTPServerConfig {
-	return &HTTPServerConfig{
-		Host:              p.HTTP.Host,
-		Port:              p.HTTP.Port,
-		ReadTimeout:       p.HTTP.ReadTimeout,
-		WriteTimeout:      p.HTTP.WriteTimeout,
-		IdleTimeout:       p.HTTP.IdleTimeout,
-		ReadHeaderTimeout: p.HTTP.ReadHeaderTimeout,
-	}
+	return &p.HTTP
 }
 
 func (p *AppConfig) GetHealthConfig() *HealthServerConfig {
-	return &HealthServerConfig{
-		Host: p.Health.Host,
-		Port: p.Health.Port,
-	}
+	return &p.Health
 }
 
 func (p *AppConfig) GetMongoConfig() *MongoConfig {
-	return &MongoConfig{
-		URI:              p.Mongo.URI,
-		DatabaseName:     p.Mongo.DatabaseName,
-		OperationTimeout: p.Mongo.OperationTimeout,
-	}
+	return &p.Mongo
 }
 
 func (p *AppConfig) GetGRPCServices() []*GRPCService {
