@@ -215,6 +215,39 @@ func (m *Manager) tryAcquireWithTimeout(ctx context.Context) (bool, error) {
 	opCtx, cancel := context.WithTimeout(ctx, m.cfg.OpTimeout)
 	defer cancel()
 
+	// takeover / lock "move" visibility
+	if m.cfg.Logger != nil && m.cfg.Logger.Logger != nil && m.cfg.Logger.Logger.IsLevelEnabled(logrus.DebugLevel) {
+		info, err := m.locker.TryAcquireWithInfo(opCtx)
+		if err != nil {
+			return false, err
+		}
+
+		if info.Acquired && (info.Takeover || info.Created) {
+			fields := logrus.Fields{
+				"lock_key":        m.cfg.LockKey,
+				"new_owner":       info.NewOwner,
+				"new_lease_until": info.NewLeaseUntil,
+			}
+
+			msg := "MongoDB migrations: lock acquired"
+
+			if info.Created {
+				msg = "MongoDB migrations: lock created"
+			}
+
+			if info.Takeover {
+				msg = "MongoDB migrations: lock takeover"
+
+				fields["prev_owner"] = info.PrevOwner
+				fields["prev_lease_until"] = info.PrevLeaseUntil
+			}
+
+			m.cfg.Logger.WithFields(fields).Debug(msg)
+		}
+
+		return info.Acquired, nil
+	}
+
 	return m.locker.TryAcquire(opCtx)
 }
 
