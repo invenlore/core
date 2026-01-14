@@ -163,7 +163,10 @@ func LoadConfig() (*AppConfig, error) {
 	loggerEntry.Debugf("GRPC Host: %s, Port: %s", cfg.GRPC.Host, cfg.GRPC.Port)
 	loggerEntry.Debugf("HTTP Host: %s, Port: %s", cfg.HTTP.Host, cfg.HTTP.Port)
 	loggerEntry.Debugf("Health Host: %s, Port: %s", cfg.Health.Host, cfg.Health.Port)
-	loggerEntry.Debugf("MongoDB database: '%s'", cfg.Mongo.DatabaseName)
+
+	if cfg.Mongo.DatabaseName != "" {
+		loggerEntry.Debugf("MongoDB database: '%s'", cfg.Mongo.DatabaseName)
+	}
 
 	for _, svc := range cfg.GRPCServices {
 		loggerEntry.Debugf("gRPC service: Name='%s', Address='%s'", svc.Name, svc.Address)

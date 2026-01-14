@@ -77,24 +77,14 @@ func (w *wrappedServerStreamLogger) Context() context.Context {
 	return w.modifiedCtx
 }
 
-func ServerRequestIDInterceptor(
-	ctx context.Context,
-	req any,
-	info *grpc.UnaryServerInfo,
-	handler grpc.UnaryHandler,
-) (any, error) {
+func ServerRequestIDInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	requestID := uuid.NewString()
 	newCtx := context.WithValue(ctx, "requestID", requestID)
 
 	return handler(newCtx, req)
 }
 
-func ServerLoggingInterceptor(
-	ctx context.Context,
-	req any,
-	info *grpc.UnaryServerInfo,
-	handler grpc.UnaryHandler,
-) (any, error) {
+func ServerLoggingInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	reqID := ctx.Value("requestID")
 	if reqID == nil {
 		reqID = "no-request-id"
@@ -130,12 +120,7 @@ func ServerLoggingInterceptor(
 	return resp, err
 }
 
-func ServerStreamRequestIDInterceptor(
-	srv any,
-	ss grpc.ServerStream,
-	info *grpc.StreamServerInfo,
-	handler grpc.StreamHandler,
-) error {
+func ServerStreamRequestIDInterceptor(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 	ctx := ss.Context()
 	requestID := uuid.NewString()
 	newCtx := context.WithValue(ctx, "requestID", requestID)
@@ -149,12 +134,7 @@ func ServerStreamRequestIDInterceptor(
 	return handler(srv, wrappedStreamWithNewCtx)
 }
 
-func ServerStreamLoggingInterceptor(
-	srv any,
-	ss grpc.ServerStream,
-	info *grpc.StreamServerInfo,
-	handler grpc.StreamHandler,
-) error {
+func ServerStreamLoggingInterceptor(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 	reqIDStr := "no-request-id"
 
 	if ws, ok := ss.(*wrappedServerStreamLogger); ok {

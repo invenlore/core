@@ -79,15 +79,7 @@ func (w *wrappedClientStreamLogger) RecvMsg(m any) error {
 	return err
 }
 
-func ClientRequestIDInterceptor(
-	ctx context.Context,
-	method string,
-	req,
-	reply any,
-	cc *grpc.ClientConn,
-	invoker grpc.UnaryInvoker,
-	opts ...grpc.CallOption,
-) error {
+func ClientRequestIDInterceptor(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 	requestID, ok := ctx.Value("requestID").(string)
 	if !ok {
 		requestID = uuid.NewString()
@@ -114,15 +106,7 @@ func ClientRequestIDInterceptor(
 	return invoker(newCtx, method, req, reply, cc, opts...)
 }
 
-func ClientLoggingInterceptor(
-	ctx context.Context,
-	method string,
-	req,
-	reply any,
-	cc *grpc.ClientConn,
-	invoker grpc.UnaryInvoker,
-	opts ...grpc.CallOption,
-) error {
+func ClientLoggingInterceptor(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 	requestID, ok := ctx.Value("requestID").(string)
 	if !ok {
 		requestID = "no-request-id"
