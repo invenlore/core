@@ -16,6 +16,16 @@ type lockDoc struct {
 	UpdatedAt  time.Time `bson:"updatedAt"`
 }
 
+type LockAcquireInfo struct {
+	Acquired       bool
+	Created        bool
+	Takeover       bool
+	PrevOwner      string
+	PrevLeaseUntil time.Time
+	NewOwner       string
+	NewLeaseUntil  time.Time
+}
+
 type Locker struct {
 	col      *mongo.Collection
 	lockKey  string
@@ -82,6 +92,72 @@ func (l *Locker) TryAcquire(ctx context.Context) (bool, error) {
 	}
 
 	return false, insErr
+}
+
+func (l *Locker) TryAcquireWithInfo(ctx context.Context) (LockAcquireInfo, error) {
+	now := time.Now().UTC()
+	leaseUntil := now.Add(l.leaseFor)
+
+	filter := bson.M{
+		"_id": l.lockKey,
+		"$or": []bson.M{
+			{"leaseUntil": bson.M{"$lte": now}},
+			{"leaseUntil": bson.M{"$exists": false}},
+			{"owner": l.owner},
+		},
+	}
+
+	update := bson.M{
+		"$set": bson.M{
+			"owner":      l.owner,
+			"leaseUntil": leaseUntil,
+			"updatedAt":  now,
+		},
+	}
+
+	// We want the *previous* doc to detect takeover.
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.Before)
+
+	var prev lockDoc
+	err := l.col.FindOneAndUpdate(ctx, filter, update, opts).Decode(&prev)
+	if err == nil {
+		info := LockAcquireInfo{
+			Acquired:       true,
+			PrevOwner:      prev.Owner,
+			PrevLeaseUntil: prev.LeaseUntil,
+			NewOwner:       l.owner,
+			NewLeaseUntil:  leaseUntil,
+			Takeover:       prev.Owner != "" && prev.Owner != l.owner,
+		}
+		return info, nil
+	}
+
+	if err != mongo.ErrNoDocuments {
+		return LockAcquireInfo{}, err
+	}
+
+	// No doc matched (either lock doc doesn't exist, or another owner holds unexpired lease).
+	_, insErr := l.col.InsertOne(ctx, lockDoc{
+		ID:         l.lockKey,
+		Owner:      l.owner,
+		LeaseUntil: leaseUntil,
+		UpdatedAt:  now,
+	})
+
+	if insErr == nil {
+		return LockAcquireInfo{
+			Acquired:      true,
+			Created:       true,
+			NewOwner:      l.owner,
+			NewLeaseUntil: leaseUntil,
+		}, nil
+	}
+
+	if IsMongoDuplicateKeyError(insErr) {
+		return LockAcquireInfo{Acquired: false}, nil
+	}
+
+	return LockAcquireInfo{}, insErr
 }
 
 func (l *Locker) Renew(ctx context.Context) error {
