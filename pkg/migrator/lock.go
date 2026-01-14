@@ -77,7 +77,7 @@ func (l *Locker) TryAcquire(ctx context.Context) (bool, error) {
 		return true, nil
 	}
 
-	if IsDuplicateKey(insErr) {
+	if IsMongoDuplicateKeyError(insErr) {
 		return false, nil
 	}
 

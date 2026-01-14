@@ -47,11 +47,15 @@ type HealthServerConfig struct {
 }
 
 type MongoConfig struct {
-	URI                 string        `env:"URI"`
-	DatabaseName        string        `env:"DATABASE_NAME"`
-	HealthCheckTimeout  time.Duration `env:"HEALTHCHECK_TIMEOUT" envDefault:"2s"`
-	HealthCheckInterval time.Duration `env:"HEALTHCHECK_INTERVAL" envDefault:"10s"`
-	OperationTimeout    time.Duration `env:"OPERATION_TIMEOUT" envDefault:"10s"`
+	URI                      string        `env:"URI"`
+	DatabaseName             string        `env:"DATABASE_NAME"`
+	HealthCheckTimeout       time.Duration `env:"HEALTHCHECK_TIMEOUT" envDefault:"2s"`
+	HealthCheckInterval      time.Duration `env:"HEALTHCHECK_INTERVAL" envDefault:"10s"`
+	OperationTimeout         time.Duration `env:"OPERATION_TIMEOUT" envDefault:"10s"`
+	MigrationTimeout         time.Duration `env:"MIGRATION_TIMEOUT" envDefault:"15m"`
+	MigrationLeaseForTimeout time.Duration `env:"MIGRATION_LEASEFOR_TIMEOUT" envDefault:"30s"`
+	MigrationPollInterval    time.Duration `env:"MIGRATION_POLL_INTERVAL" envDefault:"2s"`
+	MigrationServiceTimeout  time.Duration `env:"MIGRATION_SERVICE_TIMEOUT" envDefault:"5s"`
 }
 
 type AppConfig struct {

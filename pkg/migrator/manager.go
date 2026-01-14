@@ -14,12 +14,15 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type Config struct {
-	LockKey       string
-	LeaseFor      time.Duration
-	PollInterval  time.Duration
-	OpTimeout     time.Duration
-	Logger        *logrus.Entry
+type ManagerConfig struct {
+	LockKey          string
+	LeaseFor         time.Duration
+	PollInterval     time.Duration
+	OpTimeout        time.Duration // OpTimeout (locks, reads/writes)
+	MigrationTimeout time.Duration // MigrationTimeout (long-running migrations)
+
+	Logger *logrus.Entry
+
 	FailFast      bool // true — Run error
 	WaitForLeader bool // true — not ready, while leader not accept target
 }
@@ -27,13 +30,13 @@ type Config struct {
 type Manager struct {
 	db     *mongo.Database
 	locker *Locker
-	cfg    Config
+	cfg    ManagerConfig
 
 	ready atomic.Bool
 	last  atomic.Value // string
 }
 
-func NewManager(db *mongo.Database, owner string, cfg Config) *Manager {
+func NewManager(db *mongo.Database, owner string, cfg ManagerConfig) *Manager {
 	if cfg.LockKey == "" {
 		cfg.LockKey = "userservice:migrations"
 	}
@@ -48,6 +51,10 @@ func NewManager(db *mongo.Database, owner string, cfg Config) *Manager {
 
 	if cfg.OpTimeout <= 0 {
 		cfg.OpTimeout = 5 * time.Second
+	}
+
+	if cfg.MigrationTimeout <= 0 {
+		cfg.MigrationTimeout = 10 * time.Minute
 	}
 
 	if cfg.Logger == nil {
@@ -180,6 +187,11 @@ func (m *Manager) Run(ctx context.Context, list []Migration) error {
 	}
 
 	// not leader, wait target
+	if !m.cfg.WaitForLeader {
+		m.cfg.Logger.Debug("MongoDB migrations: not leader; not waiting for target (serve-with-degraded)")
+		return nil
+	}
+
 	if err := m.waitForTarget(ctx, target, sorted); err != nil {
 		m.setErr(err)
 		m.cfg.Logger.WithError(err).Error("MongoDB migrations: wait for target failed")
@@ -221,7 +233,7 @@ func (m *Manager) runAsLeader(ctx context.Context, list []Migration) error {
 				renewErr <- nil
 				return
 			case <-t.C:
-				opCtx, c := context.WithTimeout(ctx, m.cfg.OpTimeout)
+				opCtx, c := context.WithTimeout(renewCtx, m.cfg.OpTimeout)
 				err := m.locker.Renew(opCtx)
 
 				c()
@@ -259,7 +271,12 @@ func (m *Manager) runAsLeader(ctx context.Context, list []Migration) error {
 			"name":    mig.Name,
 		}).Debug("MongoDB migrations: applying")
 
-		if err := mig.Up(ctx, m.db); err != nil {
+		opCtx, c := context.WithTimeout(ctx, m.cfg.MigrationTimeout)
+		err = mig.Up(opCtx, m.db)
+
+		c()
+
+		if err != nil {
 			cancel()
 
 			<-renewErr
@@ -267,7 +284,7 @@ func (m *Manager) runAsLeader(ctx context.Context, list []Migration) error {
 		}
 
 		if err := m.recordApplied(ctx, mig); err != nil {
-			if !IsDuplicateKey(err) {
+			if !IsMongoDuplicateKeyError(err) {
 				cancel()
 
 				<-renewErr
