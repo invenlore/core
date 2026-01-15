@@ -78,15 +78,33 @@ func (w *wrappedServerStreamLogger) Context() context.Context {
 }
 
 func ServerRequestIDInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-	requestID := uuid.NewString()
-	newCtx := context.WithValue(ctx, "requestID", requestID)
+	requestID := ""
 
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		if vals := md.Get(RequestIDMDKey); len(vals) > 0 && vals[0] != "" {
+			requestID = vals[0]
+		}
+	}
+
+	if requestID == "" {
+		requestID = uuid.NewString()
+	}
+
+	newCtx := context.WithValue(ctx, RequestIDCtxKey, requestID)
 	return handler(newCtx, req)
 }
 
 func ServerLoggingInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-	reqID := ctx.Value("requestID")
-	if reqID == nil {
+	reqID, _ := ctx.Value(RequestIDCtxKey).(string)
+	if reqID == "" {
+		if md, ok := metadata.FromIncomingContext(ctx); ok {
+			if vals := md.Get(RequestIDMDKey); len(vals) > 0 && vals[0] != "" {
+				reqID = vals[0]
+			}
+		}
+	}
+
+	if reqID == "" {
 		reqID = "no-request-id"
 	}
 
@@ -122,8 +140,19 @@ func ServerLoggingInterceptor(ctx context.Context, req any, info *grpc.UnaryServ
 
 func ServerStreamRequestIDInterceptor(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 	ctx := ss.Context()
-	requestID := uuid.NewString()
-	newCtx := context.WithValue(ctx, "requestID", requestID)
+	requestID := ""
+
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		if vals := md.Get(RequestIDMDKey); len(vals) > 0 && vals[0] != "" {
+			requestID = vals[0]
+		}
+	}
+
+	if requestID == "" {
+		requestID = uuid.NewString()
+	}
+
+	newCtx := context.WithValue(ctx, RequestIDCtxKey, requestID)
 
 	wrappedStreamWithNewCtx := &wrappedServerStreamLogger{
 		stream:      ss,
@@ -140,9 +169,12 @@ func ServerStreamLoggingInterceptor(srv any, ss grpc.ServerStream, info *grpc.St
 	if ws, ok := ss.(*wrappedServerStreamLogger); ok {
 		reqIDStr = ws.reqID
 	} else {
-		reqIDFromCtx := ss.Context().Value("requestID")
-		if reqIDFromCtx != nil {
-			reqIDStr = reqIDFromCtx.(string)
+		if v, ok := ss.Context().Value(RequestIDCtxKey).(string); ok && v != "" {
+			reqIDStr = v
+		} else if md, ok := metadata.FromIncomingContext(ss.Context()); ok {
+			if vals := md.Get(RequestIDMDKey); len(vals) > 0 && vals[0] != "" {
+				reqIDStr = vals[0]
+			}
 		}
 	}
 

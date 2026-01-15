@@ -80,18 +80,29 @@ func (w *wrappedClientStreamLogger) RecvMsg(m any) error {
 }
 
 func ClientRequestIDInterceptor(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-	requestID, ok := ctx.Value("requestID").(string)
-	if !ok {
-		requestID = uuid.NewString()
-		ctx = context.WithValue(ctx, "requestID", requestID)
+	requestID, _ := ctx.Value(RequestIDCtxKey).(string)
+	if requestID == "" {
+		if md, ok := metadata.FromOutgoingContext(ctx); ok {
+			if vals := md.Get(RequestIDMDKey); len(vals) > 0 && vals[0] != "" {
+				requestID = vals[0]
+			}
+		}
 	}
+
+	if requestID == "" {
+		requestID = uuid.NewString()
+	}
+
+	ctx = context.WithValue(ctx, RequestIDCtxKey, requestID)
 
 	md, ok := metadata.FromOutgoingContext(ctx)
 	if !ok {
 		md = metadata.New(nil)
+	} else {
+		md = md.Copy()
 	}
 
-	md.Append("x-request-id", requestID)
+	md.Set(RequestIDMDKey, requestID)
 	newCtx := metadata.NewOutgoingContext(ctx, md)
 
 	logrus.WithFields(logrus.Fields{
@@ -107,8 +118,16 @@ func ClientRequestIDInterceptor(ctx context.Context, method string, req, reply a
 }
 
 func ClientLoggingInterceptor(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-	requestID, ok := ctx.Value("requestID").(string)
-	if !ok {
+	requestID, _ := ctx.Value(RequestIDCtxKey).(string)
+	if requestID == "" {
+		if md, ok := metadata.FromOutgoingContext(ctx); ok {
+			if vals := md.Get(RequestIDMDKey); len(vals) > 0 && vals[0] != "" {
+				requestID = vals[0]
+			}
+		}
+	}
+
+	if requestID == "" {
 		requestID = "no-request-id"
 	}
 
@@ -148,11 +167,20 @@ func ClientLoggingInterceptor(ctx context.Context, method string, req, reply any
 }
 
 func ClientStreamInterceptor(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
-	requestID, ok := ctx.Value("requestID").(string)
-	if !ok {
-		requestID = uuid.NewString()
-		ctx = context.WithValue(ctx, "requestID", requestID)
+	requestID, _ := ctx.Value(RequestIDCtxKey).(string)
+	if requestID == "" {
+		if md, ok := metadata.FromOutgoingContext(ctx); ok {
+			if vals := md.Get(RequestIDMDKey); len(vals) > 0 && vals[0] != "" {
+				requestID = vals[0]
+			}
+		}
 	}
+
+	if requestID == "" {
+		requestID = uuid.NewString()
+	}
+
+	ctx = context.WithValue(ctx, RequestIDCtxKey, requestID)
 
 	logFields := logrus.Fields{
 		"scope":     "gRPC",
@@ -162,9 +190,11 @@ func ClientStreamInterceptor(ctx context.Context, desc *grpc.StreamDesc, cc *grp
 	md, ok := metadata.FromOutgoingContext(ctx)
 	if !ok {
 		md = metadata.New(nil)
+	} else {
+		md = md.Copy()
 	}
 
-	md.Append("x-request-id", requestID)
+	md.Set(RequestIDMDKey, requestID)
 	newCtx := metadata.NewOutgoingContext(ctx, md)
 
 	startTime := time.Now()
