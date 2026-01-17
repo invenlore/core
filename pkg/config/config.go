@@ -10,7 +10,7 @@ import (
 	"github.com/caarlos0/env/v11"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/invenlore/core/pkg/logger"
-	"github.com/invenlore/proto/pkg/user"
+	"github.com/invenlore/proto/pkg/identity"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
@@ -113,9 +113,9 @@ var (
 		AddressEnv string
 		Register   RegisterFunc
 	}{
-		"UserService": {
-			AddressEnv: "USER_SERVICE_ENDPOINT",
-			Register:   user.RegisterUserServiceHandler,
+		"IdentityService": {
+			AddressEnv: "IDENTITY_SERVICE_ENDPOINT",
+			Register:   identity.RegisterIdentityServiceHandler,
 		},
 	}
 )

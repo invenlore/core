@@ -15,7 +15,7 @@ import (
 )
 
 type ManagerConfig struct {
-	LockKey          string
+	LockKey          string // e.g. identityservice:migrations
 	LeaseFor         time.Duration
 	PollInterval     time.Duration
 	OpTimeout        time.Duration // OpTimeout (locks, reads/writes)
@@ -38,7 +38,7 @@ type Manager struct {
 
 func NewManager(db *mongo.Database, owner string, cfg ManagerConfig) *Manager {
 	if cfg.LockKey == "" {
-		cfg.LockKey = "userservice:migrations"
+		cfg.LockKey = "common:migrations"
 	}
 
 	if cfg.LeaseFor <= 0 {
