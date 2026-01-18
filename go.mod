@@ -6,7 +6,7 @@ require (
 	github.com/alexliesenfeld/health v0.8.1
 	github.com/caarlos0/env/v11 v11.3.1
 	github.com/google/uuid v1.6.0
-	github.com/invenlore/proto v1.3.8
+	github.com/invenlore/proto v1.3.9
 	github.com/sirupsen/logrus v1.9.4
 	go.mongodb.org/mongo-driver v1.17.6
 	google.golang.org/grpc v1.78.0
