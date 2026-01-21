@@ -11,16 +11,24 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/invenlore/core/pkg/logger"
 	identity_v1 "github.com/invenlore/proto/pkg/identity/v1"
+	media_v1 "github.com/invenlore/proto/pkg/media/v1"
+	search_v1 "github.com/invenlore/proto/pkg/search/v1"
+	wiki_v1 "github.com/invenlore/proto/pkg/wiki/v1"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
 
 type RegisterFunc func(context.Context, *runtime.ServeMux, *grpc.ClientConn) error
 
+type RegisterEntry struct {
+	HandlerName         string
+	HandlerRegisterFunc RegisterFunc
+}
+
 type GRPCService struct {
-	Name     string
-	Address  string
-	Register RegisterFunc
+	Name            string
+	Address         string
+	RegisterEntries []RegisterEntry
 }
 
 type GRPCServerConfig struct {
@@ -110,12 +118,56 @@ var (
 	instance            *AppConfig
 	loggerEntry         = logrus.WithField("scope", "config")
 	grpcServiceRegistry = map[string]struct {
-		AddressEnv string
-		Register   RegisterFunc
+		AddressEnv      string
+		RegisterEntries []RegisterEntry
 	}{
 		"IdentityService": {
 			AddressEnv: "IDENTITY_SERVICE_ENDPOINT",
-			Register:   identity_v1.RegisterIdentityServiceHandler,
+			RegisterEntries: []RegisterEntry{
+				{
+					HandlerName:         "IdentityPublicServiceHandler",
+					HandlerRegisterFunc: identity_v1.RegisterIdentityPublicServiceHandler,
+				}, {
+					HandlerName:         "IdentityInternalServiceHandler",
+					HandlerRegisterFunc: identity_v1.RegisterIdentityInternalServiceHandler,
+				},
+			},
+		},
+		"WikiReadService": {
+			AddressEnv: "WIKI_READ_SERVICE_ENDPOINT",
+			RegisterEntries: []RegisterEntry{
+				{
+					HandlerName:         "WikiReadServiceHandler",
+					HandlerRegisterFunc: wiki_v1.RegisterWikiReadServiceHandler,
+				},
+			},
+		},
+		"WikiWriteService": {
+			AddressEnv: "WIKI_WRITE_SERVICE_ENDPOINT",
+			RegisterEntries: []RegisterEntry{
+				{
+					HandlerName:         "WikiWriteServiceHandler",
+					HandlerRegisterFunc: wiki_v1.RegisterWikiWriteServiceHandler,
+				},
+			},
+		},
+		"MediaService": {
+			AddressEnv: "MEDIA_SERVICE_ENDPOINT",
+			RegisterEntries: []RegisterEntry{
+				{
+					HandlerName:         "MediaServiceHandler",
+					HandlerRegisterFunc: media_v1.RegisterMediaServiceHandler,
+				},
+			},
+		},
+		"SearchService": {
+			AddressEnv: "SEARCH_SERVICE_ENDPOINT",
+			RegisterEntries: []RegisterEntry{
+				{
+					HandlerName:         "SearchServiceHandler",
+					HandlerRegisterFunc: search_v1.RegisterSearchServiceHandler,
+				},
+			},
 		},
 	}
 )
@@ -136,21 +188,35 @@ func LoadConfig() (*AppConfig, error) {
 		address := os.Getenv(registrationInfo.AddressEnv)
 
 		if address == "" {
-			loggerEntry.Debugf("gRPC service address not configured for '%s' (env var: %s), skipping...", servicePrefix, registrationInfo.AddressEnv)
+			loggerEntry.Debugf(
+				"gRPC service address not configured for '%s' (env var: %s), skipping...",
+				servicePrefix,
+				registrationInfo.AddressEnv,
+			)
 
 			continue
 		}
 
-		if registrationInfo.Register == nil {
-			return nil, fmt.Errorf("internal config error: register function is nil for service '%s'", servicePrefix)
+		if len(registrationInfo.RegisterEntries) == 0 {
+			return nil, fmt.Errorf("internal config error: register function is not specified for service '%s'", servicePrefix)
+		} else {
+			for _, registerEntry := range registrationInfo.RegisterEntries {
+				if registerEntry.HandlerRegisterFunc == nil {
+					return nil, fmt.Errorf(
+						"internal config error: register function '%s' is nil for service '%s'",
+						registerEntry.HandlerName,
+						servicePrefix,
+					)
+				}
+			}
 		}
 
 		loggerEntry.Infof("found gRPC service '%s' at address: %s", servicePrefix, address)
 
 		loadedServices = append(loadedServices, &GRPCService{
-			Name:     servicePrefix,
-			Address:  address,
-			Register: registrationInfo.Register,
+			Name:            servicePrefix,
+			Address:         address,
+			RegisterEntries: registrationInfo.RegisterEntries,
 		})
 	}
 
