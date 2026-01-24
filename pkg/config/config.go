@@ -66,6 +66,15 @@ type MongoConfig struct {
 	MigrationServiceTimeout  time.Duration `env:"MIGRATION_SERVICE_TIMEOUT" envDefault:"5s"`
 }
 
+type AuthConfig struct {
+	AccessTokenTTL  time.Duration `env:"ACCESS_TOKEN_TTL" envDefault:"15m"`
+	RefreshTokenTTL time.Duration `env:"REFRESH_TOKEN_TTL" envDefault:"720h"`
+	JWTIssuer       string        `env:"JWT_ISSUER" envDefault:"invenlore.identity"`
+	JWTAudience     string        `env:"JWT_AUDIENCE" envDefault:"invenlore.api"`
+	JWKSCacheTTL    time.Duration `env:"JWKS_CACHE_TTL" envDefault:"10m"`
+	JWTAllowedSkew  time.Duration `env:"JWT_ALLOWED_SKEW" envDefault:"60s"`
+}
+
 type AppConfig struct {
 	AppEnv               AppEnv          `env:"APP_ENV" envDefault:"dev"`
 	LogLevel             logger.LogLevel `env:"APP_LOG_LEVEL" envDefault:"INFO"`
@@ -74,6 +83,7 @@ type AppConfig struct {
 	GRPC   GRPCServerConfig   `envPrefix:"GRPC_"`
 	HTTP   HTTPServerConfig   `envPrefix:"HTTP_"`
 	Health HealthServerConfig `envPrefix:"HEALTH_"`
+	Auth   AuthConfig         `envPrefix:"AUTH_"`
 	Mongo  MongoConfig        `envPrefix:"MONGO_"`
 
 	GRPCServices []*GRPCService `env:"-"`
@@ -83,6 +93,7 @@ type AppConfigProvider interface {
 	GetConfig() *AppConfig
 	GetGRPCConfig() *GRPCServerConfig
 	GetHTTPConfig() *HTTPServerConfig
+	GetAuthConfig() *AuthConfig
 	GetHealthConfig() *HealthServerConfig
 	GetMongoConfig() *MongoConfig
 	GetGRPCServices() []*GRPCService
@@ -90,6 +101,10 @@ type AppConfigProvider interface {
 
 func (p *AppConfig) GetConfig() *AppConfig {
 	return p
+}
+
+func (p *AppConfig) GetAuthConfig() *AuthConfig {
+	return &p.Auth
 }
 
 func (p *AppConfig) GetGRPCConfig() *GRPCServerConfig {
