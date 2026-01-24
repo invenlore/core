@@ -3,9 +3,9 @@ package db
 import (
 	"context"
 
+	"github.com/invenlore/core/pkg/errmodel"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 func MongoGateUnary(m *MongoReadiness, allowMethods ...string) grpc.UnaryServerInterceptor {
@@ -20,7 +20,7 @@ func MongoGateUnary(m *MongoReadiness, allowMethods ...string) grpc.UnaryServerI
 		}
 
 		if !m.Ready() {
-			return nil, status.Error(codes.Unavailable, m.LastError())
+			return nil, errmodel.Error(ctx, codes.Unavailable, m.LastError())
 		}
 
 		return handler(ctx, req)
@@ -39,7 +39,7 @@ func MongoGateStream(m *MongoReadiness, allowMethods ...string) grpc.StreamServe
 		}
 
 		if !m.Ready() {
-			return status.Error(codes.Unavailable, m.LastError())
+			return errmodel.Error(ss.Context(), codes.Unavailable, m.LastError())
 		}
 
 		return handler(srv, ss)

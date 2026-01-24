@@ -3,17 +3,17 @@ package recovery
 import (
 	"context"
 
+	"github.com/invenlore/core/pkg/errmodel"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 func RecoveryUnaryInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Errorf("panic in unary handler %s: %v", info.FullMethod, r)
-			err = status.Error(codes.Internal, "internal error")
+			err = errmodel.Error(ctx, codes.Internal, "internal error")
 		}
 	}()
 
@@ -24,7 +24,7 @@ func RecoveryStreamInterceptor(srv any, ss grpc.ServerStream, info *grpc.StreamS
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Errorf("panic in stream handler %s: %v", info.FullMethod, r)
-			err = status.Error(codes.Internal, "internal error")
+			err = errmodel.Error(ss.Context(), codes.Internal, "internal error")
 		}
 	}()
 
