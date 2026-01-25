@@ -67,14 +67,15 @@ type MongoConfig struct {
 }
 
 type AuthConfig struct {
-	AccessTokenTTL      time.Duration `env:"ACCESS_TOKEN_TTL" envDefault:"15m"`
-	RefreshTokenTTL     time.Duration `env:"REFRESH_TOKEN_TTL" envDefault:"720h"`
-	JWTIssuer           string        `env:"JWT_ISSUER" envDefault:"invenlore.identity"`
-	JWTAudience         string        `env:"JWT_AUDIENCE" envDefault:"invenlore.api"`
-	JWKSCacheTTL        time.Duration `env:"JWKS_CACHE_TTL" envDefault:"10m"`
-	JWTAllowedSkew      time.Duration `env:"JWT_ALLOWED_SKEW" envDefault:"60s"`
-	KeyRotationInterval time.Duration `env:"KEY_ROTATION_INTERVAL" envDefault:"168h"`
-	KeyRetireAfter      time.Duration `env:"KEY_RETIRE_AFTER" envDefault:"1h"`
+	AccessTokenTTL          time.Duration `env:"ACCESS_TOKEN_TTL" envDefault:"15m"`
+	RefreshTokenTTL         time.Duration `env:"REFRESH_TOKEN_TTL" envDefault:"720h"`
+	JWTIssuer               string        `env:"JWT_ISSUER" envDefault:"invenlore.identity"`
+	JWTAudience             string        `env:"JWT_AUDIENCE" envDefault:"invenlore.api"`
+	JWKSCacheTTL            time.Duration `env:"JWKS_CACHE_TTL" envDefault:"10m"`
+	JWTAllowedSkew          time.Duration `env:"JWT_ALLOWED_SKEW" envDefault:"60s"`
+	KeyRotationInterval     time.Duration `env:"KEY_ROTATION_INTERVAL" envDefault:"168h"`
+	KeyRetireAfter          time.Duration `env:"KEY_RETIRE_AFTER" envDefault:"1h"`
+	KeyRotationTickInterval time.Duration `env:"KEY_ROTATION_TICK_INTERVAL" envDefault:"10m"`
 }
 
 type AppConfig struct {
