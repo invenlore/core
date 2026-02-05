@@ -78,6 +78,18 @@ type AuthConfig struct {
 	KeyRotationTickInterval time.Duration `env:"KEY_ROTATION_TICK_INTERVAL" envDefault:"10m"`
 }
 
+type OAuthProviderConfig struct {
+	ClientID     string `env:"CLIENT_ID"`
+	ClientSecret string `env:"CLIENT_SECRET"`
+	CallbackURL  string `env:"CALLBACK_URL"`
+}
+
+type OAuthConfig struct {
+	StateTTL            time.Duration       `env:"STATE_TTL" envDefault:"10m"`
+	AllowedRedirectURIs string              `env:"ALLOWED_REDIRECT_URIS"`
+	GitHub              OAuthProviderConfig `envPrefix:"GITHUB_"`
+}
+
 type AppConfig struct {
 	AppEnv               AppEnv          `env:"APP_ENV" envDefault:"dev"`
 	LogLevel             logger.LogLevel `env:"APP_LOG_LEVEL" envDefault:"INFO"`
@@ -87,6 +99,7 @@ type AppConfig struct {
 	HTTP   HTTPServerConfig   `envPrefix:"HTTP_"`
 	Health HealthServerConfig `envPrefix:"HEALTH_"`
 	Auth   AuthConfig         `envPrefix:"AUTH_"`
+	OAuth  OAuthConfig        `envPrefix:"OAUTH_"`
 	Mongo  MongoConfig        `envPrefix:"MONGO_"`
 
 	GRPCServices []*GRPCService `env:"-"`
@@ -97,6 +110,7 @@ type AppConfigProvider interface {
 	GetGRPCConfig() *GRPCServerConfig
 	GetHTTPConfig() *HTTPServerConfig
 	GetAuthConfig() *AuthConfig
+	GetOAuthConfig() *OAuthConfig
 	GetHealthConfig() *HealthServerConfig
 	GetMongoConfig() *MongoConfig
 	GetGRPCServices() []*GRPCService
@@ -108,6 +122,10 @@ func (p *AppConfig) GetConfig() *AppConfig {
 
 func (p *AppConfig) GetAuthConfig() *AuthConfig {
 	return &p.Auth
+}
+
+func (p *AppConfig) GetOAuthConfig() *OAuthConfig {
+	return &p.OAuth
 }
 
 func (p *AppConfig) GetGRPCConfig() *GRPCServerConfig {
