@@ -33,11 +33,12 @@ func NewRegistry(service string, env config.AppEnv, version string) *Registry {
 		Help: "Static service metadata (service, env, version) with value 1.",
 	})
 
-	registerer.MustRegister(
+	reg.MustRegister(
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 		collectors.NewGoCollector(),
-		serviceInfo,
 	)
+
+	registerer.MustRegister(serviceInfo)
 
 	serviceInfo.Set(1)
 
