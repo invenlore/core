@@ -10,10 +10,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
-func MongoDBConnect(ctx context.Context, mongoCfg *config.MongoConfig) (*mongo.Client, error) {
+func MongoDBConnect(ctx context.Context, mongoCfg *config.MongoConfig, opts ...*options.ClientOptions) (*mongo.Client, error) {
 	uri := mongoCfg.URI
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
+	clientOpts := options.MergeClientOptions(append([]*options.ClientOptions{options.Client().ApplyURI(uri)}, opts...)...)
+
+	client, err := mongo.Connect(ctx, clientOpts)
 	if err != nil {
 		return nil, err
 	}

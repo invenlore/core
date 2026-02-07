@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -54,6 +56,15 @@ type HealthServerConfig struct {
 	ReadHeaderTimeout time.Duration `env:"READ_HEADER_TIMEOUT" envDefault:"5s"`
 }
 
+type MetricsServerConfig struct {
+	Host              string        `env:"HOST" envDefault:"0.0.0.0"`
+	Port              string        `env:"PORT" envDefault:"9090"`
+	ReadTimeout       time.Duration `env:"READ_TIMEOUT" envDefault:"10s"`
+	WriteTimeout      time.Duration `env:"WRITE_TIMEOUT" envDefault:"10s"`
+	IdleTimeout       time.Duration `env:"IDLE_TIMEOUT" envDefault:"60s"`
+	ReadHeaderTimeout time.Duration `env:"READ_HEADER_TIMEOUT" envDefault:"5s"`
+}
+
 type MongoConfig struct {
 	URI                      string        `env:"URI"`
 	DatabaseName             string        `env:"DATABASE_NAME"`
@@ -94,13 +105,16 @@ type AppConfig struct {
 	AppEnv               AppEnv          `env:"APP_ENV" envDefault:"dev"`
 	LogLevel             logger.LogLevel `env:"APP_LOG_LEVEL" envDefault:"INFO"`
 	ServiceHealthTimeout time.Duration   `env:"SERVICE_HEALTH_TIMEOUT" envDefault:"60s"`
+	ServiceName          string          `env:"SERVICE_NAME" envDefault:""`
+	ServiceVersion       string          `env:"SERVICE_VERSION" envDefault:""`
 
-	GRPC   GRPCServerConfig   `envPrefix:"GRPC_"`
-	HTTP   HTTPServerConfig   `envPrefix:"HTTP_"`
-	Health HealthServerConfig `envPrefix:"HEALTH_"`
-	Auth   AuthConfig         `envPrefix:"AUTH_"`
-	OAuth  OAuthConfig        `envPrefix:"OAUTH_"`
-	Mongo  MongoConfig        `envPrefix:"MONGO_"`
+	GRPC    GRPCServerConfig    `envPrefix:"GRPC_"`
+	HTTP    HTTPServerConfig    `envPrefix:"HTTP_"`
+	Health  HealthServerConfig  `envPrefix:"HEALTH_"`
+	Metrics MetricsServerConfig `envPrefix:"METRICS_"`
+	Auth    AuthConfig          `envPrefix:"AUTH_"`
+	OAuth   OAuthConfig         `envPrefix:"OAUTH_"`
+	Mongo   MongoConfig         `envPrefix:"MONGO_"`
 
 	GRPCServices []*GRPCService `env:"-"`
 }
@@ -112,6 +126,7 @@ type AppConfigProvider interface {
 	GetAuthConfig() *AuthConfig
 	GetOAuthConfig() *OAuthConfig
 	GetHealthConfig() *HealthServerConfig
+	GetMetricsConfig() *MetricsServerConfig
 	GetMongoConfig() *MongoConfig
 	GetGRPCServices() []*GRPCService
 }
@@ -138,6 +153,10 @@ func (p *AppConfig) GetHTTPConfig() *HTTPServerConfig {
 
 func (p *AppConfig) GetHealthConfig() *HealthServerConfig {
 	return &p.Health
+}
+
+func (p *AppConfig) GetMetricsConfig() *MetricsServerConfig {
+	return &p.Metrics
 }
 
 func (p *AppConfig) GetMongoConfig() *MongoConfig {
@@ -218,6 +237,12 @@ func LoadConfig() (*AppConfig, error) {
 		return nil, fmt.Errorf("failed to parse server config: %w", err)
 	}
 
+	if cfg.ServiceVersion == "" {
+		if version, err := readServiceVersion(); err == nil {
+			cfg.ServiceVersion = version
+		}
+	}
+
 	logrus.SetLevel(cfg.LogLevel.ToLogrusLevel())
 
 	for servicePrefix, registrationInfo := range grpcServiceRegistry {
@@ -269,6 +294,7 @@ func LoadConfig() (*AppConfig, error) {
 	loggerEntry.Debugf("GRPC Host: %s, Port: %s", cfg.GRPC.Host, cfg.GRPC.Port)
 	loggerEntry.Debugf("HTTP Host: %s, Port: %s", cfg.HTTP.Host, cfg.HTTP.Port)
 	loggerEntry.Debugf("Health Host: %s, Port: %s", cfg.Health.Host, cfg.Health.Port)
+	loggerEntry.Debugf("Metrics Host: %s, Port: %s", cfg.Metrics.Host, cfg.Metrics.Port)
 
 	if cfg.Mongo.DatabaseName != "" {
 		loggerEntry.Debugf("MongoDB database: '%s'", cfg.Mongo.DatabaseName)
@@ -290,4 +316,28 @@ func Config() (AppConfigProvider, error) {
 	})
 
 	return instance, configLoadingErr
+}
+
+func readServiceVersion() (string, error) {
+	const maxVersionLength = 128
+
+	path := filepath.FromSlash("/app/version.txt")
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+
+	version := string(data)
+	version = strings.TrimSpace(version)
+
+	if version == "" {
+		return "", fmt.Errorf("service version file is empty")
+	}
+
+	if len(version) > maxVersionLength {
+		return "", fmt.Errorf("service version length exceeds limit")
+	}
+
+	return version, nil
 }
