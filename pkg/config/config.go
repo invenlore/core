@@ -101,6 +101,26 @@ type OAuthConfig struct {
 	GitHub              OAuthProviderConfig `envPrefix:"GITHUB_"`
 }
 
+type RateLimitGroupConfig struct {
+	RPS   int `env:"RPS" envDefault:"10"`
+	Burst int `env:"BURST" envDefault:"20"`
+}
+
+type RateLimitConfig struct {
+	Enabled           bool                 `env:"ENABLED" envDefault:"true"`
+	RedisAddress      string               `env:"REDIS_ADDRESS" envDefault:"redis:6379"`
+	RedisPassword     string               `env:"REDIS_PASSWORD" envDefault:""`
+	RedisDB           int                  `env:"REDIS_DB" envDefault:"0"`
+	Period            time.Duration        `env:"PERIOD" envDefault:"1s"`
+	TrustProxy        bool                 `env:"TRUST_PROXY" envDefault:"false"`
+	TrustedProxyCIDRs string               `env:"TRUSTED_PROXY_CIDRS" envDefault:""`
+	ExemptPaths       string               `env:"EXEMPT_PATHS" envDefault:"/health,/metrics"`
+	Auth              RateLimitGroupConfig `envPrefix:"AUTH_"`
+	Admin             RateLimitGroupConfig `envPrefix:"ADMIN_"`
+	Swagger           RateLimitGroupConfig `envPrefix:"SWAGGER_"`
+	Other             RateLimitGroupConfig `envPrefix:"OTHER_"`
+}
+
 type AppConfig struct {
 	AppEnv               AppEnv          `env:"APP_ENV" envDefault:"dev"`
 	LogLevel             logger.LogLevel `env:"APP_LOG_LEVEL" envDefault:"INFO"`
@@ -108,13 +128,14 @@ type AppConfig struct {
 	ServiceName          string          `env:"SERVICE_NAME" envDefault:""`
 	ServiceVersion       string          `env:"SERVICE_VERSION" envDefault:""`
 
-	GRPC    GRPCServerConfig    `envPrefix:"GRPC_"`
-	HTTP    HTTPServerConfig    `envPrefix:"HTTP_"`
-	Health  HealthServerConfig  `envPrefix:"HEALTH_"`
-	Metrics MetricsServerConfig `envPrefix:"METRICS_"`
-	Auth    AuthConfig          `envPrefix:"AUTH_"`
-	OAuth   OAuthConfig         `envPrefix:"OAUTH_"`
-	Mongo   MongoConfig         `envPrefix:"MONGO_"`
+	GRPC      GRPCServerConfig    `envPrefix:"GRPC_"`
+	HTTP      HTTPServerConfig    `envPrefix:"HTTP_"`
+	Health    HealthServerConfig  `envPrefix:"HEALTH_"`
+	Metrics   MetricsServerConfig `envPrefix:"METRICS_"`
+	Auth      AuthConfig          `envPrefix:"AUTH_"`
+	OAuth     OAuthConfig         `envPrefix:"OAUTH_"`
+	RateLimit RateLimitConfig     `envPrefix:"RATE_LIMIT_"`
+	Mongo     MongoConfig         `envPrefix:"MONGO_"`
 
 	GRPCServices []*GRPCService `env:"-"`
 }
@@ -125,6 +146,7 @@ type AppConfigProvider interface {
 	GetHTTPConfig() *HTTPServerConfig
 	GetAuthConfig() *AuthConfig
 	GetOAuthConfig() *OAuthConfig
+	GetRateLimitConfig() *RateLimitConfig
 	GetHealthConfig() *HealthServerConfig
 	GetMetricsConfig() *MetricsServerConfig
 	GetMongoConfig() *MongoConfig
@@ -141,6 +163,10 @@ func (p *AppConfig) GetAuthConfig() *AuthConfig {
 
 func (p *AppConfig) GetOAuthConfig() *OAuthConfig {
 	return &p.OAuth
+}
+
+func (p *AppConfig) GetRateLimitConfig() *RateLimitConfig {
+	return &p.RateLimit
 }
 
 func (p *AppConfig) GetGRPCConfig() *GRPCServerConfig {
