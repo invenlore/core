@@ -25,14 +25,14 @@ func (w *wrappedServerStreamLogger) SendMsg(m any) error {
 
 		logrus.WithFields(logrus.Fields{
 			"scope":      "gRPC",
-			"requestID":  w.reqID,
-			"statusCode": statusCode,
+			"request_id": w.reqID,
+			"grpc_code":  statusCode,
 			"error":      err.Error(),
 		}).Errorf("server: failed to send message in gRPC stream")
 	} else {
 		logrus.WithFields(logrus.Fields{
-			"scope":     "gRPC",
-			"requestID": w.reqID,
+			"scope":      "gRPC",
+			"request_id": w.reqID,
 		}).Trace("server: sent message in gRPC stream")
 	}
 
@@ -47,14 +47,14 @@ func (w *wrappedServerStreamLogger) RecvMsg(m any) error {
 
 		logrus.WithFields(logrus.Fields{
 			"scope":      "gRPC",
-			"requestID":  w.reqID,
-			"statusCode": statusCode,
+			"request_id": w.reqID,
+			"grpc_code":  statusCode,
 			"error":      err.Error(),
 		}).Errorf("server: failed to receive message in gRPC stream")
 	} else {
 		logrus.WithFields(logrus.Fields{
-			"scope":     "gRPC",
-			"requestID": w.reqID,
+			"scope":      "gRPC",
+			"request_id": w.reqID,
 		}).Trace("server: received message in gRPC stream")
 	}
 
@@ -111,8 +111,8 @@ func ServerLoggingInterceptor(ctx context.Context, req any, info *grpc.UnaryServ
 	startTime := time.Now()
 
 	logrus.WithFields(logrus.Fields{
-		"scope":     "gRPC",
-		"requestID": reqID,
+		"scope":      "gRPC",
+		"request_id": reqID,
 	}).Tracef("server: received gRPC request: %s", info.FullMethod)
 
 	resp, err := handler(ctx, req)
@@ -122,10 +122,10 @@ func ServerLoggingInterceptor(ctx context.Context, req any, info *grpc.UnaryServ
 
 	logFields := logrus.Fields{
 		"scope":      "gRPC",
-		"requestID":  reqID,
-		"took":       duration,
-		"method":     info.FullMethod,
-		"statusCode": statusCode,
+		"request_id": reqID,
+		"latency_ms": duration.Milliseconds(),
+		"rpc_method": info.FullMethod,
+		"grpc_code":  statusCode,
 	}
 
 	if err != nil {
@@ -181,8 +181,8 @@ func ServerStreamLoggingInterceptor(srv any, ss grpc.ServerStream, info *grpc.St
 	startTime := time.Now()
 
 	logrus.WithFields(logrus.Fields{
-		"scope":     "gRPC",
-		"requestID": reqIDStr,
+		"scope":      "gRPC",
+		"request_id": reqIDStr,
 	}).Tracef("server: received gRPC stream: %s", info.FullMethod)
 
 	err := handler(srv, ss)
@@ -192,10 +192,10 @@ func ServerStreamLoggingInterceptor(srv any, ss grpc.ServerStream, info *grpc.St
 
 	logFields := logrus.Fields{
 		"scope":      "gRPC",
-		"requestID":  reqIDStr,
-		"took":       duration,
-		"method":     info.FullMethod,
-		"statusCode": statusCode,
+		"request_id": reqIDStr,
+		"latency_ms": duration.Milliseconds(),
+		"rpc_method": info.FullMethod,
+		"grpc_code":  statusCode,
 	}
 
 	if err != nil {

@@ -264,12 +264,26 @@ func LoadConfig() (*AppConfig, error) {
 	}
 
 	if cfg.ServiceVersion == "" {
-		if version, err := readServiceVersion(); err == nil {
+		if version, err := ReadServiceVersion(); err == nil {
 			cfg.ServiceVersion = version
 		}
 	}
 
-	logrus.SetLevel(cfg.LogLevel.ToLogrusLevel())
+	serviceName := cfg.ServiceName
+	if serviceName == "" {
+		serviceName = "unknown"
+	}
+	serviceVersion := cfg.ServiceVersion
+	if serviceVersion == "" {
+		serviceVersion = "unknown"
+	}
+
+	logger.Init(logger.Config{
+		Level:   cfg.LogLevel,
+		Env:     string(cfg.AppEnv),
+		Service: serviceName,
+		Version: serviceVersion,
+	})
 
 	for servicePrefix, registrationInfo := range grpcServiceRegistry {
 		address := os.Getenv(registrationInfo.AddressEnv)
@@ -344,7 +358,7 @@ func Config() (AppConfigProvider, error) {
 	return instance, configLoadingErr
 }
 
-func readServiceVersion() (string, error) {
+func ReadServiceVersion() (string, error) {
 	const maxVersionLength = 128
 
 	path := filepath.FromSlash("/app/version.txt")
